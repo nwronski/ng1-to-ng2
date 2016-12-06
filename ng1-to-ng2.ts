@@ -2,7 +2,7 @@ import * as angular from "angular";
 import {Ng1ViewConfig, $InjectorLike, StateProvider, State} from "angular-ui-router";
 
 import {ElementRef, Component, Input, Inject, NgModule, Injector} from "@angular/core";
-import {UpgradeAdapter} from "@angular/upgrade";
+import { UpgradeModule, downgradeComponent } from "@angular/upgrade/static";
 
 import {
     UIRouter, ViewService, StateRegistry,
@@ -145,10 +145,12 @@ function uiRouterUpgradeFactory(router: UIRouter, injector: Injector) {
  * This NgModule should be added to the root module of the hybrid app.
  */
 @NgModule({
-  imports: [UIRouterModule],
+  imports: [UIRouterModule, UpgradeModule],
   declarations: [UIViewNgUpgrade],
   providers: [
+    { provide: '$uiRouter', useFactory: (i: any) => i.get('$uiRouter'), deps: ['$injector']},
     // ui-router-ng2 code will use the ng1 $uiRouter instance instead of creating its own.
+
     { provide: UIRouter, useFactory: uiRouterUpgradeFactory, deps: ['$uiRouter', Injector] },
 
     { provide: UIROUTER_ROOT_MODULE, useValue: {}, multi: true },
@@ -162,6 +164,9 @@ function uiRouterUpgradeFactory(router: UIRouter, injector: Injector) {
         return { fqn: null, context: r.root() } as ParentUIViewInject
       },
     },
+  ],
+  entryComponents: [
+    UIViewNgUpgrade
   ],
   exports: [UIViewNgUpgrade, UIRouterModule]
 }) export class Ng1ToNg2Module {}
@@ -180,15 +185,14 @@ function uiRouterUpgradeFactory(router: UIRouter, injector: Injector) {
  * - register the ng1-to-ng2 ViewConfigFactory
  *   allows both ng1 and ng2 ui-views to activate
  */
-function applyHybridAdapter(upgradeAdapter: UpgradeAdapter) {
+function applyHybridAdapter(ng2Injector: Injector) {
   // Expose the ng1 DI '$uiRouter' instance as an ng2 Provider.
-  upgradeAdapter.upgradeNg1Provider('$uiRouter');
+  //upgradeAdapter.upgradeNg1Provider('$uiRouter');
 
   // Downgrade the UIViewNgUpgrade ng2 Component to an ng1 directive.
   // The directive is used in a (generated) view template by the (host) ng1 ui-router,
   // whenever it finds a view configured with a `component: <Ng2ComponentClass>`
-  upgradeModule.directive("uiViewNgUpgrade", <any> upgradeAdapter.downgradeNg2Component(UIViewNgUpgrade));
-
+  upgradeModule.directive("uiViewNgUpgrade", <any> downgradeComponent({ component: UIViewNgUpgrade }));
 
   upgradeModule.run(['$injector', (ng1Injector: $InjectorLike) => {
     let $uiRouter: UIRouter = ng1Injector.get('$uiRouter');
@@ -199,7 +203,6 @@ function applyHybridAdapter(upgradeAdapter: UpgradeAdapter) {
     // it retrieves from ng1 injector first, then ng2 injector if the token isn't found.
     const mergedInjector = {
       get: function(token: any, ng2NotFoundValue?: any) {
-        let ng2Injector = ng1Injector.get('ng2.Injector');
         return (ng1Injector.has(token) && ng1Injector.get(token)) || ng2Injector.get(token, ng2NotFoundValue)
       }
     };
@@ -266,13 +269,12 @@ export function isNg2ComponentClass(def: any) {
       .find((x: any) => x instanceof Component);
 }
 
-
 /**
  * Hybrid apps should import this and call `uiRouterNgUpgrade.setUpgradeAdapter(adapter)`.
  * This will register the ui-router hybrid adapter code.
  */
 export let uiRouterNgUpgrade = {
-  setUpgradeAdapter: function(upgradeAdapter: UpgradeAdapter) {
-    applyHybridAdapter(upgradeAdapter);
+  setNg2Injector: function(injector: Injector) {
+    applyHybridAdapter(injector);
   }
 };
