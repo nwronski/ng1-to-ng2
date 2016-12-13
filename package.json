@@ -38,7 +38,7 @@
     "webpack": "^1.13.1",
     "zone.js": "~0.6.21"
   },
-  "main": "ng1-to-ng2.min.js",
+  "main": "ng1-to-ng2.js",
   "typings": "ng1-to-ng2.d.ts",
   "repository": {
     "type": "git",

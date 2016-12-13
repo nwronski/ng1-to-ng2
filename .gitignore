@@ -1,10 +1,5 @@
  build
 
-# artifacts
-*.d.ts
-*.js
-*.js.map
-
 # IDE
 *.ipr
 *.iml
@@ -45,3 +40,4 @@ node_modules
 .node_repl_history
 
 .vscode/settings.json
+.DS_Store
